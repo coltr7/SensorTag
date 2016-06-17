@@ -1,0 +1,59 @@
+{
+  "name": "node-red-contrib-sensortag",
+  "version": "0.1.4",
+  "description": "Node-RED node used to connect to Ti SensorTags via BLE and read their sensor data.",
+  "main": "sensorTagNode.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ibm-iot/node-red-contrib-sensortag.git"
+  },
+  "keywords": [
+    "IBM",
+    "node-red",
+    "sensor",
+    "ble"
+  ],
+  "author": {
+    "name": "Cristian Traistaru",
+    "email": "traistar@us.ibm.com"
+  },
+  "license": "Apache",
+  "bugs": {
+    "url": "https://github.com/ibm-iot/node-red-contrib-sensortag/issues"
+  },
+  "homepage": "https://github.com/ibm-iot/node-red-contrib-sensortag",
+  "node-red": {
+    "nodes": {
+      "sensorTag": "sensorTagNode.js"
+    }
+  },
+  "dependencies": {
+    "getmac": "^1.0.7",
+    "sensortag": "^1.1.1"
+  },
+  "gitHead": "2c987ce45ab3ef22813b7ba71f04220718ac7985",
+  "_id": "node-red-contrib-sensortag@0.1.4",
+  "_shasum": "af2610b47c2479f555b160f169fb8db9662d46af",
+  "_from": "node-red-contrib-sensortag@latest",
+  "_npmVersion": "1.4.28",
+  "_npmUser": {
+    "name": "cristian.t",
+    "email": "traistar@us.ibm.com"
+  },
+  "maintainers": [
+    {
+      "name": "cristian.t",
+      "email": "traistar@us.ibm.com"
+    }
+  ],
+  "dist": {
+    "shasum": "af2610b47c2479f555b160f169fb8db9662d46af",
+    "tarball": "https://registry.npmjs.org/node-red-contrib-sensortag/-/node-red-contrib-sensortag-0.1.4.tgz"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/node-red-contrib-sensortag/-/node-red-contrib-sensortag-0.1.4.tgz",
+  "readme": "ERROR: No README data found!"
+}

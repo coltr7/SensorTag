@@ -1,0 +1,342 @@
+<style>
+  .form-row.checkbox > input[type="checkbox"] {
+    width:10%;
+  }
+
+  .form-row.checkbox > label {
+    width:80%;
+  }
+
+  .form-row.checkbox > .form-row > input {
+    width: 100px;
+  }
+
+  .sensorTagDevices {
+    border: 1px solid #ccc;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    height: 100px;
+    overflow-y: scroll;
+  }
+
+  .sensorTagDevice {
+    border-bottom: 1px solid #ddd;
+    margin: 0;
+    padding: 3px;
+    cursor: pointer;
+  }
+
+  .sensorTagDevice:hover {
+    background-color: #DFD;
+  }
+
+  .sensorTagDevice.header {
+    font-weight: bold;
+    border-style: solid;
+    border-color: #ccc;
+    border-width: 1px 1px 0 1px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    cursor: auto;
+  }
+
+  .sensorTagDevice.header:hover {
+    background-color: initial;
+  }
+
+  .sensorTagDevice.not-found {
+    background-color: #FDD;
+  }
+
+  .sensorTagDevice > div:first-child {
+    width: 10%;
+    float: left;
+    text-align: center;
+  }
+
+  .sensorTagDevice > div:last-child {
+    width: 90%;
+  }
+
+  .sensorTagDevice input {
+    position: relative;
+    top: -3px;
+  }
+</style>
+
+<script type="text/x-red" data-template-name="sensorTag">
+     <div class="form-row">
+      <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+      <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <h5>Devices</h5>
+    <div class="form-row">
+      <a href="#" class="btn btn-mini" id="node-input-scanDevices" style="display:none"><i class="icon-refresh"></i> Re-Scan</a>
+      <span id="node-input-scan-isScanning" style="display:none">Scanning...</span>
+    </div>
+    <div class="sensorTagDevice header"><div><input id="node-input-selectAllDevices" type="checkbox" value="all"></div><div>Sensor Tag ID</div></div>
+    <div class="sensorTagDevices">
+    </div>
+    <h5>Sensors</h5>
+    <div class="form-row">
+      <a href="#" class="btn btn-mini" id="node-input-disableAll"><i class="icon-remove"></i> Disable All</a>&nbsp;
+      <a href="#" class="btn btn-mini" id="node-input-enableAll"><i class="icon-ok"></i> Enable All</a>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-temperature">
+      <label for="node-input-temperature">Temperature</label>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-humidity">
+      <label for="node-input-humidity">Humidity</label>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-pressure">
+      <label for="node-input-pressure">Pressure</label>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-magnetometer">
+      <label for="node-input-magnetometer">Magnetometer</label>
+      <div class="form-row">
+        <label for="node-input-magnetometerPeriod"><i class="icon-time"></i> Period</label>
+        <input id="node-input-magnetometerPeriod" type="text"> ms
+      </div>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-accelerometer">
+      <label for="node-input-accelerometer">Accelerometer</label>
+      <div class="form-row">
+        <label for="node-input-accelerometerPeriod"><i class="icon-time"></i> Period</label>
+        <input id="node-input-accelerometerPeriod" type="text"> ms
+      </div>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-gyroscope">
+      <label for="node-input-gyroscope">Gyroscope</label>
+      <div class="form-row">
+        <label for="node-input-gyroscopePeriod"><i class="icon-time"></i> Period</label>
+        <input id="node-input-gyroscopePeriod" type="text"> ms
+      </div>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-luxometer">
+      <label for="node-input-luxometer">Luxometer (CC2650 only)</label>
+      <div class="form-row">
+        <label for="node-input-luxometerPeriod"><i class="icon-time"></i> Period</label>
+        <input id="node-input-luxometerPeriod" type="text"> ms
+      </div>
+    </div>
+    <div class="form-row checkbox">
+      <input type="checkbox" id="node-input-keys">
+      <label for="node-input-keys">Keys</label>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="sensorTag">
+   <p>Input node for the Ti SensorTag</p>
+</script>
+
+<script type="text/javascript">
+    var sensorTagPollInterval = null;
+    var sensorTagDevices = [];
+
+    function setPeriodVisibility( $checkbox )
+    {
+      var $period = $checkbox.siblings( ".form-row" );
+      if( $period.length < 1 ) return;
+      if( $checkbox.prop( "checked" ) )
+      {
+        $period.show();
+      }
+      else
+      {
+        $period.hide();
+      }
+    }
+
+    function positiveNumber( v )
+    {
+      if( v === "" ) return true;
+      return ( !isNaN( v ) && v > 0 );
+    }
+
+    function addDevice( id )
+    {
+      var $device = $( '<div class="sensorTagDevice">' +
+                       '<div><input type="checkbox" value="' + id + '"></div>' +
+                       '<div class="sensorTagName">' + id + '</div></div>' );
+      $( '.sensorTagDevices' ).append( $device );
+      sensorTagDevices.push( {
+        id : id,
+        element : $device
+      } );
+    }
+
+    function deviceNotFound( device , value )
+    {
+      if( value )
+      {
+        device.element.addClass( "not-found" );
+        device.element.find( ".sensorTagName" ).text( "(Missing) " + device.id );
+      }
+      else
+      {
+        device.element.removeClass( "not-found" );
+        device.element.find( ".sensorTagName" ).text( device.id );
+      }
+    }
+
+    function pollDevices()
+    {
+      var self = this;
+      $.getJSON( "/sensortag/tags" ).done( function( data ) {
+        for( var i = 0; i < sensorTagDevices.length; i++ )
+        {
+          var device = sensorTagDevices[i];
+          if( data.hasOwnProperty( device.id ) )
+          {
+            // TODO: Add RSSI display/update
+            deviceNotFound( device , false );
+            delete data[ device.id ];
+          }
+          else
+          {
+            if( self.devices.indexOf( device.id ) !== -1 ) deviceNotFound( device , true );
+            else
+            {
+              device.element.remove();
+              sensorTagDevices.splice( i-- , 1 );
+            }
+          }
+        }
+
+        for( var id in data )
+        {
+          addDevice( id );
+        }
+      } );
+    }
+
+    RED.nodes.registerType('sensorTag',{
+        category: 'GatewayKit',
+        color:"GoldenRod",
+        defaults: {
+            name: { value : "sensorTag" },
+            devices: { value : [] },
+            temperature: { value : true },
+            humidity: { value : true },
+            pressure: { value : true },
+            magnetometer: { value : true },
+            magnetometerPeriod : { value : 1000 , validate : positiveNumber },
+            accelerometer: { value : true },
+            accelerometerPeriod : {value : 1000 , validate : positiveNumber },
+            gyroscope: { value : true },
+            gyroscopePeriod : { value : 1000 , validate : positiveNumber },
+            luxometer : { value : true },
+            luxometerPeriod : { value : 1000 , validate : positiveNumber },
+            keys: { value : true }
+        },
+        inputs:0,
+        outputs:1,
+        icon: "bluetooth.png",
+        label: function() {
+            return this.name || "sensorTag";
+        },
+        labelStyle: function() {
+            return this.name ? "node_label_italic" : "";
+        },
+        oneditsave: function() {
+          var self = this;
+
+          // Clear hidden periods
+          $( ".form-row.checkbox > .form-row" ).each( function() {
+            if( $( this ).css( "display" ) === "none" )
+            {
+              $( this ).find( "input" ).val( "" );
+            }
+          } );
+
+          self.devices = [];
+          $( ".sensorTagDevices input:checked" ).each( function() {
+            self.devices.push( $( this ).val() );
+          } );
+
+          $.get( "/sensortag/safe" );
+          clearInterval( sensorTagPollInterval );
+        },
+        oneditcancel: function() {
+          $.get( "/sensortag/safe" );
+          clearInterval( sensorTagPollInterval );
+        },
+
+        oneditprepare: function() {
+          var self = this;
+          sensorTagDevices = [];
+
+          var $checkboxes = $( ".form-row.checkbox > input" );
+          for( var i = 0; i < $checkboxes.length; i++ )
+          {
+            setPeriodVisibility( $( $checkboxes[i] ) );
+          }
+
+          $checkboxes.on( "change" , function() {
+            setPeriodVisibility( $( this ) );
+          } );
+
+          $( "#node-input-disableAll" ).on( "click" , function( event ) {
+            event.preventDefault();
+            $checkboxes.prop( "checked" , false ).trigger( "change" );
+          } );
+
+          $( "#node-input-enableAll" ).on( "click" , function( event ) {
+            event.preventDefault();
+            $checkboxes.prop( "checked" , true ).trigger( "change" );
+          } );
+
+          var $devices = $( ".sensorTagDevices" );
+
+          $devices.on( "change" , "input" , function() {
+            if( !$( this ).prop( "checked" ) )
+              $( "#node-input-selectAllDevices" ).prop( "checked" , false );
+            else if( $( ".sensorTagDevices input" ).length === $( ".sensorTagDevices input:checked" ).length )
+              $( "#node-input-selectAllDevices" ).prop( "checked" , true );
+          } );
+
+          $devices.on( "click" , ".sensorTagDevice" , function( event ) {
+            var $input = $( this ).find( 'input' );
+            if( $( event.target ).is( $input ) ) return;
+            $input.trigger( 'click' );
+          } );
+
+          $( "#node-input-selectAllDevices" ).on( "click" , function() {
+            $( ".sensorTagDevices input" ).prop( "checked" , $( this ).prop( "checked" ) );
+          } );
+
+          $( "#node-input-scanDevices" ).on( "click" , function( event ) {
+            event.preventDefault();
+            $.get( "/sensortag/restart" ).done( function() {
+              $( "#node-input-scanDevices" ).hide();
+              $( "#node-input-scan-isScanning" ).show();
+            } );
+          } );
+
+          if( this.devices.length > 0 )
+          {
+            for( var i = 0; i < this.devices.length; i++ )
+            {
+              addDevice( this.devices[i] );
+            }
+
+            $devices.find( "input" ).prop( "checked" , true );
+            $( "#node-input-selectAllDevices" ).prop( "checked" , true );
+          }
+
+          sensorTagPollInterval = setInterval( pollDevices.bind( this ) , 1000 );
+
+          $.getJSON( "/sensortag/isscanning" ).done( function( data ) {
+            if( data.scanning ) $( "#node-input-scan-isScanning" ).show();
+            else $( "#node-input-scanDevices" ).show();
+          } );
+        },
+    });
+</script>
